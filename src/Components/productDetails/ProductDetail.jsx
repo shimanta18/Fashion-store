@@ -1,26 +1,30 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { products } from '../../data/products';
+import { useEffect, useState } from 'react';
+import { FcRating } from "react-icons/fc";
 
-
-export default function ProductDetailPage() {
+// 1. Rename to match your server component's import and accept the product prop
+export default function ProductDetail({ product }) {
   
-  const [selectedProductId, setSelectedProductId] = useState(1);
-  
-  
-  const product = useMemo(() => {
-    return products.find((p) => p.id === selectedProductId) || products[0];
-  }, [selectedProductId]);
-
-  // UI state for selections
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
-  const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
-  
-  //zoom
+  // 2. State management for interactive elements
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // helper to dynamically calculate CSS positioning for single-image detail views
+  // 3. Reset local selection states when navigating between products
+  useEffect(() => {
+    if (product) {
+      setSelectedColor(product.colors?.[0] || '');
+      setSelectedSize(product.sizes?.[0] || '');
+      setActiveImageIndex(0);
+    }
+  }, [product?.id]);
+
+  // Fallback safety (though the server component's notFound() usually catches this)
+  if (!product) {
+    return <div className="min-h-screen flex items-center justify-center text-sm">Loading product...</div>;
+  }
+
   const getImageStyle = (viewIndex) => {
     switch (viewIndex) {
       case 1: 
@@ -34,18 +38,16 @@ export default function ProductDetailPage() {
     }
   };
 
-  // format currency dynamically to Taka (৳)
   const formatPrice = (price) => {
-    return `৳ ${price.toLocaleString('en-BD')}`;
+    return `$${price?.toLocaleString('en-BD')}`;
   };
 
   return (
     <main className="min-h-screen bg-[#faf9f6] text-[#1c140e] py-8 px-4 sm:px-6 lg:px-16 font-sans">
       <div className="max-w-7xl mx-auto">
         
-        {/* new product button */}
+        {/* Back Button */}
         <div className="mb-8">
-        
           <button 
             onClick={() => window.history.back()}
             className="inline-flex items-center gap-2.5 px-4.5 py-2.5 bg-white border border-[#e5dfd3] hover:border-gray-400 text-sm font-semibold rounded-xl shadow-xs transition-all duration-200 group"
@@ -65,10 +67,9 @@ export default function ProductDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           
-          {/*thumbnails*/}
+          {/* Left Column: Images & Meta */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             
-            {/* Viewport Frame */}
             <div className="aspect-[3/4] bg-white border border-[#e5dfd3]/60 rounded-3xl overflow-hidden relative shadow-sm">
               <img 
                 src={product.image} 
@@ -85,7 +86,7 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* sliced thumbnails row */}
+            {/* Thumbnails */}
             <div className="grid grid-cols-3 gap-3">
               {[1, 2, 3].map((idx) => (
                 <button
@@ -128,8 +129,8 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="flex flex-col items-end gap-1.5">
-                <div className="text-xs font-bold text-gray-800">
-                  ★ ({product.rating}) <span className="text-gray-400 font-normal">{(product.id * 14) + 120} reviews</span>
+                <div className="text-xs flex items-center gap-1 font-bold text-gray-800">
+                  <FcRating className="w-4 h-4" />({product.rating || 5}) <span className="text-gray-400 font-normal">{(product.id * 14) + 120} reviews</span>
                 </div>
                 <button className="text-xs font-bold text-[#6C5DD3] border border-[#6C5DD3]/20 hover:bg-[#6C5DD3]/5 px-3 py-1.5 rounded-lg transition-colors">
                   View Specs
@@ -139,7 +140,7 @@ export default function ProductDetailPage() {
 
           </div>
 
-          {/* product optimaization */}
+          {/* Right Column: Product Configurations */}
           <div className="lg:col-span-7 flex flex-col gap-6 justify-start">
             
             <div>
@@ -159,7 +160,7 @@ export default function ProductDetailPage() {
                     </svg>
                   ))}
                 </div>
-                <span className="font-bold text-gray-800">[{product.rating}]</span>
+                <span className="font-bold text-gray-800">[{product.rating || 5}]</span>
                 <span className="text-gray-400">•</span>
                 <span className="text-gray-500 font-medium">{(product.id * 11) + 45} reviews</span>
                 <span className="text-gray-400">•</span>
@@ -174,66 +175,69 @@ export default function ProductDetailPage() {
 
             <hr className="border-gray-200" />
 
-            {/* dynamic Colors Selection */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-gray-800">Available Colors</span>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
-                      selectedColor === color
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
+            {/* Colors Selection */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <span className="text-xs font-bold text-gray-800">Available Colors</span>
+                <div className="flex flex-wrap gap-2">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
+                        selectedColor === color
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Dynamic Sizes Selection */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-800">Available Size</span>
-                {product.inStock && (
-                  <span className="bg-[#6C5DD3]/10 text-[#6C5DD3] font-bold text-[10px] px-2 py-0.5 rounded-full">
-                    Low Stock Alert
-                  </span>
-                )}
+            {/* Sizes Selection */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-gray-800">Available Size</span>
+                  {product.inStock && (
+                    <span className="bg-[#6C5DD3]/10 text-[#6C5DD3] font-bold text-[10px] px-2 py-0.5 rounded-full">
+                      Low Stock Alert
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2.5">
+                  {product.sizes.map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => setSelectedSize(sz)}
+                      className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
+                        selectedSize === sz
+                          ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {product.sizes.map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => setSelectedSize(sz)}
-                    className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
-                      selectedSize === sz
-                        ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                    }`}
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* Description and Quality Block */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-gray-800">Description & Quality:</span>
               <ul className="list-disc pl-5 text-sm text-gray-600 leading-relaxed flex flex-col gap-2">
-                <li>{product.description}</li>
+                <li>{product.description || "Premium structural material design."}</li>
                 <li>Carefully tailored fit designed to ensure structured comfort and ease of movement.</li>
                 <li>Pre-shrunk and built to retain deep, saturated fiber color depth even after repeated home washes.</li>
               </ul>
             </div>
 
-            {/* regional delivery information block */}
+            {/* Regional Delivery Information Block */}
             <div className="border border-gray-200/80 bg-white/60 rounded-2xl p-5 flex flex-col sm:flex-row gap-6 sm:gap-4 justify-between shadow-sm">
-              
               <div className="flex items-start gap-3">
                 <div className="p-2.5 bg-gray-100 rounded-xl text-gray-600">
                   <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">
@@ -268,48 +272,6 @@ export default function ProductDetailPage() {
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Returns</span>
                   <span className="text-xs font-bold text-gray-800">7-Day Hassle-Free Return</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* bottom Section of Customer Reviews */}
-            <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold text-gray-800">Customer Reviews</span>
-              
-              <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
-                <div className="min-w-[290px] md:min-w-[340px] flex-1 bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-gray-800">Nayeem Ahmed</span>
-                    <span className="text-[10px] font-bold text-gray-400">Recent Buyer</span>
-                  </div>
-                  <div className="flex text-amber-400 mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed italic">
-                    "Exactly what I was looking for. Fabric feels incredibly premium and soft against the skin. Fits true to size!"
-                  </p>
-                </div>
-
-                <div className="min-w-[290px] md:min-w-[340px] flex-1 bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-gray-800">Sufian S.</span>
-                    <span className="text-[10px] font-bold text-gray-400">Verified Buyer</span>
-                  </div>
-                  <div className="flex text-amber-400 mb-2">
-                    {[...Array(4)].map((_, i) => (
-                      <svg key={i} className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed italic">
-                    "The color matches the product image perfectly. Premium stitching, fast delivery within Dhaka."
-                  </p>
                 </div>
               </div>
             </div>

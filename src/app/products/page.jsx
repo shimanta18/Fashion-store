@@ -8,16 +8,23 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 export default function ProductsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  //core stats
-  const [activeCategory, setActiveCategory] = useState(() => searchParams.get('category') || 'all');
-  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
-  const [sortBy, setSortBy] = useState('featured');
   const [isPending, startTransition] = useTransition();
 
+ 
+  const activeCategory = searchParams.get('category') || 'all';
+  const sortBy = searchParams.get('sort') || 'featured';
   
+  
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
   const [greeting, setGreeting] = useState('The whole atelier');
 
+  
+  const urlSearch = searchParams.get('search') || '';
+  useEffect(() => {
+    setSearchQuery(urlSearch);
+  }, [urlSearch]);
+
+  
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Good morning. Going for shop?');
@@ -25,15 +32,10 @@ export default function ProductsPage() {
     else setGreeting('Good evening. The evening archive');
   }, []);
 
-  useEffect(() => {
-    setActiveCategory(searchParams.get('category') || 'all');
-  }, [searchParams]);
-
   const categories = ['all', 'outerwear', 'knitwear', 'shirts', 'dresses', 'denim', 'accessories'];
 
   
   const processedProducts = useMemo(() => {
-  
     const cleanQuery = searchQuery.trim().replace(/\s+/g, ' ').toLowerCase();
 
     const filtered = products.filter((product) => {
@@ -50,13 +52,15 @@ export default function ProductsPage() {
     return filtered; 
   }, [searchQuery, activeCategory, sortBy]);
 
-
-  const handleCategoryChange = (category) => {
+ 
+  const updateUrlParam = (key, value) => {
     startTransition(() => {
-      setActiveCategory(category);
       const params = new URLSearchParams(searchParams.toString());
-      if (category === 'all') params.delete('category');
-      else params.set('category', category);
+      if (value === 'all' || !value) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
       router.push(`/products?${params.toString()}`, { scroll: false });
     });
   };
@@ -64,7 +68,7 @@ export default function ProductsPage() {
   return (
     <main className="bg-[#FAF8F5] min-h-screen text-[#1C140E] pt-16 pb-32 px-4 sm:px-8 md:px-12 transition-all duration-300 selection:bg-stone-200">
       
-      {/*header */}
+      {/* Header */}
       <header className="max-w-[1400px] mx-auto mb-16 space-y-4">
         <div className="flex items-center gap-3">
           <span className="text-[9px] tracking-[0.3em] font-bold text-stone-400 uppercase">
@@ -82,18 +86,18 @@ export default function ProductsPage() {
         </p>
       </header>
 
-      {/* navigation and filter*/}
+      {/* Navigation and Filter Utilities */}
       <section className="max-w-[1400px] mx-auto border-b border-stone-200 pb-8 mb-12">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           
-          {/* categories Horizontal Scroller */}
+          {/* Categories Horizontal Scroller */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0 scroll-smooth whitespace-nowrap py-1">
             {categories.map((category) => {
               const isActive = activeCategory === category;
               return (
                 <button
                   key={category}
-                  onClick={() => handleCategoryChange(category)}
+                  onClick={() => updateUrlParam('category', category)}
                   className={`text-[11px] font-medium tracking-widest uppercase px-5 py-2.5 rounded-full transition-all duration-300 ease-out active:scale-95 ${
                     isActive
                       ? 'bg-[#1C140E] text-white shadow-md shadow-stone-900/10'
@@ -106,10 +110,10 @@ export default function ProductsPage() {
             })}
           </div>
 
-          {/* Search bar and sorting Utility */}
+          {/* Search Bar and Sorting Options */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 w-full lg:w-auto">
             
-            {/* minimal input */}
+            {/* Minimal Input */}
             <div className="relative flex-1 sm:w-64">
               <input
                 type="text"
@@ -129,11 +133,11 @@ export default function ProductsPage() {
               )}
             </div>
 
-            {/* custom interactive select drop */}
+            {/* Custom Interactive Select Dropdown */}
             <div className="relative min-w-[160px] border-b border-stone-300 pb-2">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => updateUrlParam('sort', e.target.value)}
                 className="w-full bg-transparent appearance-none cursor-pointer text-xs font-semibold tracking-widest uppercase text-[#1C140E]/90 focus:outline-none focus:text-[#1C140E]"
               >
                 <option value="featured">Sort: Featured</option>
@@ -151,10 +155,10 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/*grid and containeer */}
+      {/* Grid Canvas and Container */}
       <div className="max-w-[1400px] mx-auto relative min-h-[45vh]">
         
-        
+        {/* Syncing Overlay Loader */}
         {isPending && (
           <div className="absolute inset-0 bg-[#FAF8F5]/60 z-20 backdrop-blur-[1px] flex items-center justify-center transition-all duration-300">
             <div className="flex flex-col items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-xl shadow-stone-200/50 border border-stone-100 animate-fade-in">
@@ -167,7 +171,7 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* empty state */}
+        {/* Empty State Layout */}
         {processedProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center px-6 max-w-md mx-auto space-y-6 animate-fade-in">
             <div className="h-12 w-12 rounded-full bg-[#F3EFEA] flex items-center justify-center text-stone-400">
@@ -185,9 +189,7 @@ export default function ProductsPage() {
             </div>
             <button
               onClick={() => {
-                setActiveCategory('all');
                 setSearchQuery('');
-                setSortBy('featured');
                 router.push('/products');
               }}
               className="text-[11px] font-semibold tracking-widest uppercase bg-[#1C140E] text-white px-6 py-3.5 rounded-full hover:bg-stone-800 transition-all duration-300 active:scale-95 shadow-md shadow-stone-900/10"
@@ -197,12 +199,12 @@ export default function ProductsPage() {
           </div>
         ) : (
           
-          /* responsive product card grid */
+          /* Responsive Balanced Product Card Grid */
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-12 transition-all duration-500">
             {processedProducts.map((item) => (
               <Link key={item.id} href={`/products/${item.id}`} className="group block space-y-3">
                 
-                
+                {/* Visual Frame */}
                 <div className="aspect-[3/4] w-full overflow-hidden rounded-[4px] bg-[#F3EFEA] border border-stone-200/30 relative shadow-sm group-hover:shadow-md transition-all duration-500 ease-out">
                   <img
                     src={item.image}
@@ -211,25 +213,23 @@ export default function ProductsPage() {
                     className="w-full h-full object-cover transform scale-100 group-hover:scale-[1.03] transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
                   />
                   
-                  
                   {item.tag && (
                     <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-md text-[#1C140E] text-[9px] font-bold tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] shadow-sm transform group-hover:translate-y-[-1px] transition-transform duration-300">
                       {item.tag}
                     </span>
                   )}
 
-               
                   <div className="absolute inset-0 bg-stone-950/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
 
-                {/* typography information strip */}
+                {/* Info Text Elements */}
                 <div className="flex flex-col gap-0.5 px-0.5">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="text-xs font-normal text-stone-800 tracking-wide group-hover:text-[#b96a4a] transition-colors duration-300 truncate max-w-[80%]">
                       {item.name}
                     </h3>
                     <p className="text-xs font-semibold text-[#1C140E] shrink-0">
-                      ৳{item.price}
+                      ${item.price}
                     </p>
                   </div>
                   <p className="text-[10px] uppercase tracking-wider text-stone-400 font-medium">
