@@ -1,52 +1,86 @@
 'use client';
+import { useCart } from '@/context/CartContext';
+import Image from 'next/image';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { FcRating } from 'react-icons/fc';
 
-import { useEffect, useState } from 'react';
-import { FcRating } from "react-icons/fc";
+
+const formatPrice = (price) => {
+  if (typeof price !== 'number') return '';
+  return new Intl.NumberFormat('en-BD', {
+    style: 'currency',
+    currency: 'BDT',
+    minimumFractionDigits: 0,
+  }).format(price);
+};
+
+// Generates safe, stable numbers from alphanumeric IDs
+const getMockMetric = (id, multiplier, offset) => {
+  if (!id) return offset;
+  const numericString = String(id).replace(/\D/g, ''); 
+  const seed = parseInt(numericString.slice(-4), 10) || 42; 
+  return (seed % 100) * multiplier + offset;
+};
 
 export default function ProductDetail({ product }) {
+  
+  const { addToCart } = useCart(); 
 
-  const [selectedColor, setSelectedColor] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || '');
+  const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || '');
+  const [activeImageIndex, setActiveImageIndex] = useState(0); 
 
-  useEffect(() => {
-    if (product) {
-      setSelectedColor(product.colors?.[0] || '');
-      setSelectedSize(product.sizes?.[0] || '');
-      setActiveImageIndex(0);
-    }
-  }, [product?.id]);
-
+  // Early return fallback guard placed safely before hooks processing
   if (!product) {
-    return <div className="min-h-screen flex items-center justify-center text-sm">Loading product...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm font-medium tracking-wide text-gray-500">
+        Loading product details...
+      </div>
+    );
   }
 
-  const getImageStyle = (viewIndex) => {
-    switch (viewIndex) {
-      case 1:
-        return "w-full h-full object-cover object-top scale-150 origin-top transition-transform duration-500";
-      case 2:
-        return "w-full h-full object-cover object-center scale-175 transition-transform duration-500";
-      case 3:
-        return "w-full h-full object-cover object-bottom scale-125 origin-bottom transition-transform duration-500";
-      default:
-        return "w-full h-full object-cover transition-transform duration-500";
-    }
-  };
+  // Deduplicate and filter out invalid/empty images cleanly
+  const productImages = Array.from(
+    new Set([product.image, ...(product.images || [])].filter(Boolean))
+  );
 
-  const formatPrice = (price) => {
-    return `$${price?.toLocaleString('en-BD')}`;
+ 
+  const handleAddToCart = () => {
+    const payload = {
+      id: product.id,
+      name: product.name,
+      color: selectedColor,
+      size: selectedSize,
+      price: product.price,
+     
+      image: productImages[activeImageIndex] || productImages[0], 
+      quantity: 1, 
+      category: product.category || 'Clothing' 
+    };
+
+    console.log('Adding to cart payload:', payload);
+
+    // Execute the global context function
+   if (addToCart) {
+      addToCart(payload);
+      
+      toast.success('Added to bag!'); 
+    } else {
+      console.error("CartContext is missing the addToCart function.");
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#faf9f6] dark:bg-[#120c08] text-[#1c140e] dark:text-[#faf9f6] py-8 px-4 sm:px-6 lg:px-16 font-sans transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
 
-        {/* back */}
+        {/* Action Header navigation Row */}
         <div className="mb-8">
           <button
+            type="button"
             onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2.5 px-4.5 py-2.5 bg-white dark:bg-[#1a120c] border border-[#e5dfd3] dark:border-[#2d2117] hover:border-gray-400 dark:hover:border-stone-500 text-sm font-semibold rounded-xl shadow-xs transition-all duration-200 group"
+            className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-white dark:bg-[#1a120c] border border-[#e5dfd3] dark:border-[#2d2117] hover:border-gray-400 dark:hover:border-stone-500 text-sm font-semibold rounded-xl shadow-xs transition-all duration-200 group"
           >
             <svg
               className="w-4 h-4 text-gray-600 dark:text-stone-400 transition-transform duration-200 group-hover:-translate-x-1"
@@ -63,18 +97,22 @@ export default function ProductDetail({ product }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
 
-          {/* left column  */}
+          {/*  Visual Showcase & Meta metrics */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-
+            
+           
             <div className="aspect-[3/4] bg-white dark:bg-[#1a120c] border border-[#e5dfd3]/60 dark:border-[#2d2117] rounded-3xl overflow-hidden relative shadow-sm">
-              <img
-                src={product.image}
+              <Image
+                src={productImages[activeImageIndex] || '/placeholder-product.jpg'}
                 alt={product.name}
-                className={getImageStyle(activeImageIndex)}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 40vw"
+                className="object-cover transition-all duration-300"
               />
 
               {!product.inStock && (
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-10">
                   <span className="bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest px-4 py-2 rounded-xl shadow-lg">
                     Sold Out
                   </span>
@@ -82,29 +120,35 @@ export default function ProductDetail({ product }) {
               )}
             </div>
 
-            {/* thumbnails */}
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map((idx) => (
-                <button
-                  key={idx}
-                  onClick={() => product.inStock && setActiveImageIndex(idx)}
-                  disabled={!product.inStock}
-                  className={`aspect-square overflow-hidden rounded-2xl border transition-all duration-300 relative ${
-                    activeImageIndex === idx
-                      ? 'border-[#6C5DD3] ring-2 ring-[#6C5DD3]/20 scale-[1.02]'
-                      : 'border-[#e5dfd3] dark:border-[#2d2117] opacity-80 hover:opacity-100'
-                  } ${!product.inStock ? 'cursor-not-allowed opacity-40' : ''}`}
-                >
-                  <img
-                    src={product.image}
-                    alt={`Detail slice ${idx}`}
-                    className={getImageStyle(idx)}
-                  />
-                </button>
-              ))}
-            </div>
+           
+            {productImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-2.5">
+                {productImages.map((imgUrl, idx) => (
+                  <button
+                    key={`${imgUrl}-${idx}`}
+                    type="button"
+                    onClick={() => setActiveImageIndex(idx)}
+                    aria-label={`Switch main display to view image variant ${idx + 1}`}
+                    aria-selected={activeImageIndex === idx}
+                    className={`aspect-square overflow-hidden rounded-2xl border transition-all duration-300 relative bg-white dark:bg-[#1a120c] ${
+                      activeImageIndex === idx
+                        ? 'border-[#6C5DD3] ring-2 ring-[#6C5DD3]/20 scale-[1.02]'
+                        : 'border-[#e5dfd3] dark:border-[#2d2117] opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <Image
+                      src={imgUrl}
+                      alt={`${product.name} gallery item ${idx + 1}`}
+                      fill
+                      sizes="120px"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {/* metadata   */}
+             
             <div className="border border-[#e5dfd3] dark:border-[#2d2117] bg-white dark:bg-[#1a120c] rounded-2xl p-4 flex items-center justify-between shadow-sm mt-2">
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
@@ -126,9 +170,12 @@ export default function ProductDetail({ product }) {
 
               <div className="flex flex-col items-end gap-1.5">
                 <div className="text-xs flex items-center gap-1 font-bold text-gray-800 dark:text-stone-200">
-                  <FcRating className="w-4 h-4" />({product.rating || 5}) <span className="text-gray-400 dark:text-stone-500 font-normal">{(product.id * 14) + 120} reviews</span>
+                  <FcRating className="w-4 h-4" />({product.rating || 5}) 
+                  <span className="text-gray-400 dark:text-stone-500 font-normal">
+                    {getMockMetric(product.id, 14, 120)} reviews
+                  </span>
                 </div>
-                <button className="text-xs font-bold text-[#6C5DD3] border border-[#6C5DD3]/20 hover:bg-[#6C5DD3]/5 px-3 py-1.5 rounded-lg transition-colors">
+                <button type="button" className="text-xs font-bold text-[#6C5DD3] border border-[#6C5DD3]/20 hover:bg-[#6C5DD3]/5 px-3 py-1.5 rounded-lg transition-colors">
                   View Specs
                 </button>
               </div>
@@ -136,9 +183,8 @@ export default function ProductDetail({ product }) {
 
           </div>
 
-         {/*product collection*/}
+          {/*  Dynamic Spec details & Checkout Architecture */}
           <div className="lg:col-span-7 flex flex-col gap-6 justify-start">
-
             <div>
               <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gray-500 dark:text-stone-400 bg-gray-100/80 dark:bg-[#1a120c] border border-gray-200/60 dark:border-[#2d2117] px-2.5 py-1 rounded-md inline-block">
                 {product.category} Collection
@@ -158,18 +204,23 @@ export default function ProductDetail({ product }) {
                 </div>
                 <span className="font-bold text-gray-800 dark:text-stone-200">[{product.rating || 5}]</span>
                 <span className="text-gray-400 dark:text-stone-500">•</span>
-                <span className="text-gray-500 dark:text-stone-400 font-medium">{(product.id * 11) + 45} reviews</span>
+                <span className="text-gray-500 dark:text-stone-400 font-medium">
+                  {getMockMetric(product.id, 11, 45)} reviews
+                </span>
                 <span className="text-gray-400 dark:text-stone-500">•</span>
-                <span className="text-black dark:text-stone-500 font-bold">{(product.id * 33) + 12} Sold</span>
+                <span className="text-black dark:text-stone-200 font-bold">
+                  {getMockMetric(product.id, 33, 12)} Sold
+                </span>
               </div>
             </div>
 
-            <div className="text-3xl font-black text-black dark:text-stone-200">
+            <div className="text-3xl font-black text-black dark:text-stone-200 tracking-tight">
               {formatPrice(product.price)}
             </div>
 
-            <hr className="border-gray-200 dark:border-[#2d2117] " />
+            <hr className="border-gray-200 dark:border-[#2d2117]" />
 
+            {/* Colors Option Array Selector */}
             {product.colors && product.colors.length > 0 && (
               <div className="flex flex-col gap-3">
                 <span className="text-xs font-bold text-gray-800 dark:text-stone-200">Available Colors</span>
@@ -177,7 +228,9 @@ export default function ProductDetail({ product }) {
                   {product.colors.map((color) => (
                     <button
                       key={color}
+                      type="button"
                       onClick={() => setSelectedColor(color)}
+                      aria-pressed={selectedColor === color}
                       className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
                         selectedColor === color
                           ? 'bg-gray-900 dark:bg-[#faf9f6] text-white dark:text-[#120c08] border-gray-900 dark:border-[#faf9f6]'
@@ -191,6 +244,7 @@ export default function ProductDetail({ product }) {
               </div>
             )}
 
+            
             {product.sizes && product.sizes.length > 0 && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
@@ -205,7 +259,9 @@ export default function ProductDetail({ product }) {
                   {product.sizes.map((sz) => (
                     <button
                       key={sz}
+                      type="button"
                       onClick={() => setSelectedSize(sz)}
+                      aria-pressed={selectedSize === sz}
                       className={`w-11 h-11 rounded-xl border flex items-center justify-center text-xs font-extrabold transition-all duration-200 ${
                         selectedSize === sz
                           ? 'bg-gray-900 dark:bg-[#faf9f6] text-white dark:text-[#120c08] border-gray-900 dark:border-[#faf9f6] shadow-sm'
@@ -219,7 +275,24 @@ export default function ProductDetail({ product }) {
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+           
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!product.inStock}
+                className={`w-full sm:w-64 py-4 px-6 rounded-2xl text-sm font-bold tracking-wide transition-all duration-300 shadow-md transform active:scale-98 ${
+                  product.inStock
+                    ? 'bg-[#6C5DD3] hover:bg-[#5b4ebc] text-white shadow-[#6C5DD3]/20'
+                    : 'bg-gray-200 dark:bg-[#221912] text-gray-400 dark:text-stone-600 cursor-not-allowed shadow-none'
+                }`}
+              >
+                {product.inStock ? 'Add to Bag' : 'Out of Stock'}
+              </button>
+            </div>
+
+            {/*  description Block */}
+            <div className="flex flex-col gap-2 mt-2">
               <span className="text-xs font-bold text-gray-800 dark:text-stone-200">Description & Quality:</span>
               <ul className="list-disc pl-5 text-sm text-gray-600 dark:text-stone-400 leading-relaxed flex flex-col gap-2">
                 <li>{product.description || "Premium structural material design."}</li>
@@ -228,7 +301,8 @@ export default function ProductDetail({ product }) {
               </ul>
             </div>
 
-            <div className="border border-gray-200/80 dark:border-[#2d2117] bg-white/60 dark:bg-[#1a120c] rounded-2xl p-5 flex flex-col sm:flex-row gap-6 sm:gap-4 justify-between shadow-sm">
+            {/* Logistics Infrastructure Context Grid Info */}
+            <div className="border border-gray-200/80 dark:border-[#2d2117] bg-white/60 dark:bg-[#1a120c] rounded-2xl p-5 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 justify-between shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 bg-gray-100 dark:bg-[#221912] rounded-xl text-gray-600 dark:text-stone-400">
                   <svg className="w-5 h-5 fill-none stroke-current" strokeWidth="2" viewBox="0 0 24 24">

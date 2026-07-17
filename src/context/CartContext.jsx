@@ -2,75 +2,53 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const CartCtx = createContext(null);
+const CartContext = createContext();
 
 export function CartProvider({ children }) {
-  
-  const [bag, setBag] = useState(() => {
-    if (typeof window === 'undefined') return [];
-    
-    const localData = localStorage.getItem('fs_cart_session');
-    return localData ? JSON.parse(localData) : [];
-  });
+  const [cart, setCart] = useState([]);
 
-  
+  // load cart data from localStorage when the client initializes
   useEffect(() => {
-    localStorage.setItem('fs_cart_session', JSON.stringify(bag));
-  }, [bag]);
+    const savedCart = localStorage.getItem('fashion_store_cart');
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.error("Error parsing cart data", e);
+      }
+    }
+  }, []);
 
-  const addToCart = (product, color, size) => {
-    setBag((prev) => {
-     
-      const matchIdx = prev.findIndex(
-        (item) => item.id === product.id && item.color === color && item.size === size
+  const addToCart = (product) => {
+    setCart((prevCart) => {
+      // group identical items together matching by id, color, and size
+
+
+      const matchIndex = prevCart.findIndex(
+        (item) =>
+          item.id === product.id &&
+          item.color === product.color &&
+          item.size === product.size
       );
 
-      
-      if (matchIdx > -1) {
-        const updated = [...prev];
-        updated[matchIdx].quantity += 1;
-        return updated;
+      let updatedCart;
+      if (matchIndex > -1) {
+        updatedCart = [...prevCart];
+        updatedCart[matchIndex].quantity += 1;
+      } else {
+        updatedCart = [...prevCart, { ...product, quantity: 1 }];
       }
 
-      // fresh item addition
-      return [...prev, { ...product, color, size, quantity: 1 }];
+      localStorage.setItem('fashion_store_cart', JSON.stringify(updatedCart));
+      return updatedCart;
     });
   };
 
-  const removeFromCart = (id, color, size) => {
-    setBag((prev) => prev.filter(
-      (item) => !(item.id === id && item.color === color && item.size === size)
-    ));
-  };
-
-  const updateQuantity = (id, color, size, amount) => {
-    if (amount < 1) return; 
-
-    setBag((prev) =>
-      prev.map((item) =>
-        item.id === id && item.color === color && item.size === size
-          ? { ...item, quantity: amount }
-          : item
-      )
-    );
-  };
-
-  // quickly compute current totals inline
-  const cartCount = bag.reduce((acc, item) => acc + item.quantity, 0);
-  const cartTotal = bag.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
   return (
-    <CartCtx.Provider value={{ cart: bag, addToCart, removeFromCart, updateQuantity, cartCount, cartTotal }}>
+    <CartContext.Provider value={{ cart, addToCart }}>
       {children}
-    </CartCtx.Provider>
+    </CartContext.Provider>
   );
 }
 
-// export a streamlined clean hook so we don't write useContext everywhere
-export const useCart = () => {
-  const context = useContext(CartCtx);
-  if (!context) {
-    throw new Error('useCart hook called outside its provider framework parent');
-  }
-  return context;
-};
+export const useCart = () => useContext(CartContext);
