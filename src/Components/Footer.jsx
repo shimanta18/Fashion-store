@@ -39,7 +39,7 @@ export default function Footer() {
               Studio
             </span>
             <ul className="space-y-3">
-              {['Our Story', 'Sustainability', 'Journal', 'Stockists'].map((link) => (
+              {[ 'Journal', ].map((link) => (
                 <li key={link}>
                   <Link
                     href={`/${link.toLowerCase().replace(' ', '-')}`}
@@ -60,7 +60,7 @@ export default function Footer() {
               {['Shipping', 'Returns', 'Size Guide', 'Contact'].map((link) => (
                 <li key={link}>
                   <Link
-                    href={`/${link.toLowerCase().replace(' ', '-')}`}
+                    href={``}
                     className="text-xs sm:text-[13px] text-stone-600 dark:text-stone-300 hover:text-[#b96a4a] transition-colors font-light block"
                   >
                     {link}
