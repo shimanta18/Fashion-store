@@ -3,9 +3,9 @@
 import { products } from '@/data/products';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Suspense, useEffect, useMemo, useState, useTransition } from 'react';
 
-export default function ProductsPage() {
+function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -62,7 +62,7 @@ export default function ProductsPage() {
   return (
     <main className="bg-[#FAF8F5] dark:bg-[#120c08] min-h-screen text-[#1C140E] dark:text-[#faf9f6] pt-16 pb-32 px-4 sm:px-8 md:px-12 transition-all duration-300 selection:bg-stone-200">
 
-      {/* header */}
+      {/* Header */}
       <header className="max-w-[1400px] mx-auto mb-16 space-y-4">
         <div className="flex items-center gap-3">
           <span className="text-[9px] tracking-[0.3em] font-bold text-stone-400 dark:text-stone-500 uppercase">
@@ -80,11 +80,11 @@ export default function ProductsPage() {
         </p>
       </header>
 
-      /* navigation */
+      {/* Navigation */}
       <section className="max-w-[1400px] mx-auto border-b border-stone-200 dark:border-[#2d2117] pb-8 mb-12">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
 
-          /* Categories Horizontal Scroller */
+          {/* Categories Horizontal Scroller */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0 scroll-smooth whitespace-nowrap py-1">
             {categories.map((category) => {
               const isActive = activeCategory === category;
@@ -104,9 +104,8 @@ export default function ProductsPage() {
             })}
           </div>
 
-          /* search bar */
+          {/* Search Bar */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 w-full lg:w-auto">
-
             <div className="relative flex-1 sm:w-64">
               <input
                 type="text"
@@ -142,14 +141,13 @@ export default function ProductsPage() {
                 </svg>
               </div>
             </div>
-
           </div>
+
         </div>
       </section>
 
-      /* conatainer  */
+      {/* Product Grid Container */}
       <div className="max-w-[1400px] mx-auto relative min-h-[45vh]">
-
         {isPending && (
           <div className="absolute inset-0 bg-[#FAF8F5]/60 dark:bg-[#120c08]/60 z-20 backdrop-blur-[1px] flex items-center justify-center transition-all duration-300">
             <div className="flex flex-col items-center gap-3 bg-white dark:bg-[#1a120c] px-6 py-4 rounded-xl shadow-xl shadow-stone-200/50 dark:shadow-black/30 border border-stone-100 dark:border-[#2d2117] animate-fade-in">
@@ -188,11 +186,9 @@ export default function ProductsPage() {
             </button>
           </div>
         ) : (
-
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-12 transition-all duration-500">
             {processedProducts.map((item) => (
               <Link key={item.id} href={`/products/${item.id}`} className="group block space-y-3">
-
                 <div className="aspect-[3/4] w-full overflow-hidden rounded-[4px] bg-[#F3EFEA] dark:bg-[#1a120c] border border-stone-200/30 dark:border-[#2d2117] relative shadow-sm group-hover:shadow-md transition-all duration-500 ease-out">
                   <img
                     src={item.image}
@@ -200,13 +196,11 @@ export default function ProductsPage() {
                     loading="lazy"
                     className="w-full h-full object-cover transform scale-100 group-hover:scale-[1.03] transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
                   />
-
                   {item.tag && (
                     <span className="absolute top-3 left-3 bg-white/95 dark:bg-[#120c08]/90 backdrop-blur-md text-[#1C140E] dark:text-[#faf9f6] text-[9px] font-bold tracking-[0.15em] uppercase px-3 py-1.5 rounded-[2px] shadow-sm transform group-hover:translate-y-[-1px] transition-transform duration-300">
                       {item.tag}
                     </span>
                   )}
-
                   <div className="absolute inset-0 bg-stone-950/5 dark:bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </div>
 
@@ -223,12 +217,27 @@ export default function ProductsPage() {
                     {item.category}
                   </p>
                 </div>
-
               </Link>
             ))}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#120c08] flex items-center justify-center">
+          <span className="text-[10px] tracking-[0.3em] font-semibold text-stone-400 dark:text-stone-500 uppercase animate-pulse">
+            Loading Atelier Selection...
+          </span>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
